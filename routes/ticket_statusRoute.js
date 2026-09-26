@@ -1,5 +1,4 @@
 const { Router } = require("express");
-
 const route = Router();
 
 const {
@@ -14,12 +13,12 @@ const {
  * @swagger
  * tags:
  *   name: Ticket Status
- *   description: Ticket status CRUD
+ *   description: Ticket status CRUD operations
  */
 
 /**
  * @swagger
- * /api/ticket-status:
+ * /ticket-status:
  *   post:
  *     summary: Create ticket status
  *     tags: [Ticket Status]
@@ -38,7 +37,7 @@ const {
  *                 example: "Paid"
  *     responses:
  *       201:
- *         description: Ticket status created
+ *         description: Ticket status created successfully
  *       400:
  *         description: Validation error
  *       500:
@@ -46,10 +45,9 @@ const {
  */
 route.post("/", createTicketStatus);
 
-
 /**
  * @swagger
- * /api/ticket-status:
+ * /ticket-status:
  *   get:
  *     summary: Get all ticket statuses
  *     tags: [Ticket Status]
@@ -61,10 +59,9 @@ route.post("/", createTicketStatus);
  */
 route.get("/", getTicketStatuses);
 
-
 /**
  * @swagger
- * /api/ticket-status/{id}:
+ * /ticket-status/{id}:
  *   get:
  *     summary: Get ticket status by ID
  *     tags: [Ticket Status]
@@ -74,6 +71,7 @@ route.get("/", getTicketStatuses);
  *         required: true
  *         schema:
  *           type: string
+ *         description: Ticket status ID
  *     responses:
  *       200:
  *         description: Ticket status found
@@ -84,10 +82,9 @@ route.get("/", getTicketStatuses);
  */
 route.get("/:id", getTicketStatusById);
 
-
 /**
  * @swagger
- * /api/ticket-status/{id}:
+ * /ticket-status/{id}:
  *   put:
  *     summary: Update ticket status
  *     tags: [Ticket Status]
@@ -96,6 +93,13 @@ route.get("/:id", getTicketStatusById);
  *         name: id
  *         required: true
  *         schema:
+ *           type: string
+ *         description: Ticket status ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
  *             type: object
  *             required:
  *               - name
@@ -103,21 +107,22 @@ route.get("/:id", getTicketStatusById);
  *               name:
  *                 type: string
  *                 description: The ticket status name
- *                 example: "Paid"
+ *                 example: "Pending"
  *     responses:
  *       200:
- *         description: Ticket status updated
+ *         description: Ticket status updated successfully
  *       400:
  *         description: Validation error
  *       404:
  *         description: Ticket status not found
+ *       500:
+ *         description: Internal server error
  */
 route.put("/:id", updateTicketStatus);
 
-
 /**
  * @swagger
- * /api/ticket-status/{id}:
+ * /ticket-status/{id}:
  *   delete:
  *     summary: Delete ticket status
  *     tags: [Ticket Status]
@@ -127,15 +132,15 @@ route.put("/:id", updateTicketStatus);
  *         required: true
  *         schema:
  *           type: string
+ *         description: Ticket status ID
  *     responses:
  *       200:
- *         description: Ticket status deleted
+ *         description: Ticket status deleted successfully
  *       404:
  *         description: Ticket status not found
  *       500:
  *         description: Internal server error
  */
 route.delete("/:id", deleteTicketStatus);
-
 
 module.exports = route;

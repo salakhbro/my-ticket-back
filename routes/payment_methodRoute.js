@@ -19,7 +19,7 @@ const {
 
 /**
  * @swagger
- * /api/payment-method:
+ * /payment-method:
  *   post:
  *     summary: Create payment method
  *     tags: [Payment Method]
@@ -38,24 +38,30 @@ const {
  *     responses:
  *       201:
  *         description: Payment method created
+ *       400:
+ *         description: Validation error
+ *       500:
+ *         description: Internal server error
  */
 router.post("/", createPaymentMethod);
 
 /**
  * @swagger
- * /api/payment-method:
+ * /payment-method:
  *   get:
  *     summary: Get all payment methods
  *     tags: [Payment Method]
  *     responses:
  *       200:
  *         description: Success
+ *       500:
+ *         description: Internal server error
  */
 router.get("/", getPaymentMethods);
 
 /**
  * @swagger
- * /api/payment-method/{id}:
+ * /payment-method/{id}:
  *   get:
  *     summary: Get payment method by ID
  *     tags: [Payment Method]
@@ -70,12 +76,14 @@ router.get("/", getPaymentMethods);
  *         description: Success
  *       404:
  *         description: Payment method not found
+ *       500:
+ *         description: Internal server error
  */
 router.get("/:id", getPaymentMethodById);
 
 /**
  * @swagger
- * /api/payment-method/{id}:
+ * /payment-method/{id}:
  *   put:
  *     summary: Update payment method
  *     tags: [Payment Method]
@@ -102,12 +110,14 @@ router.get("/:id", getPaymentMethodById);
  *         description: Payment method updated
  *       404:
  *         description: Payment method not found
+ *       500:
+ *         description: Internal server error
  */
 router.put("/:id", updatePaymentMethod);
 
 /**
  * @swagger
- * /api/payment-method/{id}:
+ * /payment-method/{id}:
  *   delete:
  *     summary: Delete payment method
  *     tags: [Payment Method]
@@ -122,6 +132,8 @@ router.put("/:id", updatePaymentMethod);
  *         description: Payment method deleted
  *       404:
  *         description: Payment method not found
+ *       500:
+ *         description: Internal server error
  */
 router.delete("/:id", deletePaymentMethod);
 

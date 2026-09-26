@@ -1,36 +1,45 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { Admin } = require("../models/Admin");
+const { Admin } = require("../model/adminSchema");
 
-const JWT_SECRET = process.env.JWT_SECRET || "default_jwt_secret";
-const REFRESH_SECRET = process.env.REFRESH_SECRET || "default_refresh_secret";
+const JWT_SECRET = process.env.JWT_SECRET || "super_secret_key";
+const REFRESH_SECRET = process.env.REFRESH_SECRET || "super_refresh_secret";
 
-// Yangi admin qo'shish
-const createAdmin = async (req, res) => {
+// ----------------- Register Admin ---------------- //
+const postRegisterAdmin = async (req, res) => {
     try {
         const { name, login, password, is_creator } = req.body;
 
         if (!name || !login || !password) {
-            return res.status(400).json({ message: "Barcha majburiy maydonlarni kiriting" });
+            return res.status(400).json({
+                success: false,
+                message: "Barcha majburiy maydonlarni kiriting.",
+            });
         }
 
-        const checkAdmin = await Admin.findOne({ login });  
-        if (checkAdmin) {
-            return res.status(400).json({ message: "Ushbu login allaqachon mavjud" });
+        const existingAdmin = await Admin.findOne({ login });
+        if (existingAdmin) {
+            return res.status(400).json({
+                success: false,
+                message: "Ushbu login allaqachon band qilingan.",
+            });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const newAdmin = await Admin.create({
+        const newAdmin = new Admin({
             name,
             login,
             hashed_password: hashedPassword,
             is_creator: is_creator || false,
         });
 
-        res.status(201).json({
-            message: "Admin ro'yxatga olindi",
-            data: {
+        await newAdmin.save();
+
+        return res.status(201).json({
+            success: true,
+            message: "Admin ro'yxatdan muvaffaqiyatli o'tdi.",
+            innerData: {
                 id: newAdmin._id,
                 name: newAdmin.name,
                 login: newAdmin.login,
@@ -39,23 +48,34 @@ const createAdmin = async (req, res) => {
             },
         });
     } catch (error) {
-        res.status(500).json({ message: "Ichki server xatoligi", details: error.message });
+        console.error("Xato:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server xatosi: Adminni ro'yxatdan o'tkazishda xato yuz berdi.",
+            error: error.message,
+        });
     }
 };
 
-// Tizimga kirish (Login)
+// ----------------- Login Admin ---------------- //
 const loginAdmin = async (req, res) => {
     try {
         const { login, password } = req.body;
 
         const admin = await Admin.findOne({ login });
         if (!admin || !admin.is_active) {
-            return res.status(401).json({ message: "Login yoki parol xato (yoki akkount faol emas)" });
+            return res.status(401).json({
+                success: false,
+                message: "Login yoki parol xato (yoki akkount faol emas).",
+            });
         }
 
         const isMatch = await bcrypt.compare(password, admin.hashed_password);
         if (!isMatch) {
-            return res.status(401).json({ message: "Login yoki parol xato" });
+            return res.status(401).json({
+                success: false,
+                message: "Login yoki parol xato.",
+            });
         }
 
         const accessToken = jwt.sign({ id: admin._id, login: admin.login }, JWT_SECRET, { expiresIn: "2h" });
@@ -64,87 +84,182 @@ const loginAdmin = async (req, res) => {
         admin.hashed_refresh_token = await bcrypt.hash(refreshToken, 10);
         await admin.save();
 
-        res.status(200).json({
-            message: "Muvaffaqiyatli avtorizatsiya",
+        return res.status(200).json({
+            success: true,
+            message: "Muvaffaqiyatli avtorizatsiya.",
             tokens: {
                 accessToken,
                 refreshToken,
             },
         });
     } catch (error) {
-        res.status(500).json({ message: "Ichki server xatoligi", details: error.message });
+        console.error("Login xatosi:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server xatosi: Avtorizatsiyadan o'tishda xato yuz berdi.",
+            error: error.message,
+        });
     }
 };
 
-// Barcha adminlarni olish
-const getAllAdmins = async (req, res) => {
+// ----------------- Get All Admins ---------------- //
+const getAdmins = async (req, res) => {
     try {
         const admins = await Admin.find({}, "-hashed_password -hashed_refresh_token");
-        res.status(200).json(admins);
+
+        return res.status(200).json({
+            success: true,
+            message: "Barcha adminlar ro'yxati olingan.",
+            innerData: admins,
+        });
     } catch (error) {
-        res.status(500).json({ message: "Serverda xatolik yuz berdi", details: error.message });
+        console.error("Error fetching admins:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server xatosi: Adminlarni olishda xato yuz berdi.",
+            error: error.message,
+        });
     }
 };
 
-// ID bo'yicha bitta adminni olish
+// ----------------- Get Admin By ID ---------------- //
 const getAdminById = async (req, res) => {
     try {
-        const { id } = req.params;
-        const admin = await Admin.findById(id, "-hashed_password -hashed_refresh_token");
+        const adminId = req.params.id;
+        const admin = await Admin.findById(adminId, "-hashed_password -hashed_refresh_token");
 
         if (!admin) {
-            return res.status(404).json({ message: "Admin topilmadi" });
+            return res.status(404).json({
+                success: false,
+                message: "Admin topilmadi.",
+            });
         }
 
-        res.status(200).json(admin);
+        return res.status(200).json({
+            success: true,
+            message: "Admin topildi.",
+            innerData: admin,
+        });
     } catch (error) {
-        res.status(500).json({ message: "Serverda xatolik yuz berdi", details: error.message });
+        console.error("GET ADMIN BY ID ERROR:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server xatosi: Adminni olishda xatolik yuz berdi.",
+            error: error.message,
+        });
     }
 };
 
-// Admin ma'lumotlarini tahrirlash
+// ----------------- Update Admin ---------------- //
 const updateAdmin = async (req, res) => {
     try {
         const { id } = req.params;
         const { name, is_active, is_creator } = req.body;
 
-        const updated = await Admin.findByIdAndUpdate(
+        const updatedAdmin = await Admin.findByIdAndUpdate(
             id,
             { name, is_active, is_creator },
             { new: true, runValidators: true }
         ).select("-hashed_password -hashed_refresh_token");
 
-        if (!updated) {
-            return res.status(404).json({ message: "Admin topilmadi" });
+        if (!updatedAdmin) {
+            return res.status(404).json({
+                success: false,
+                message: "Admin topilmadi.",
+            });
         }
 
-        res.status(200).json({ message: "Ma'lumotlar yangilandi", data: updated });
+        return res.status(200).json({
+            success: true,
+            message: "Admin ma'lumotlari yangilandi.",
+            innerData: updatedAdmin,
+        });
     } catch (error) {
-        res.status(500).json({ message: "Serverda xatolik yuz berdi", details: error.message });
+        console.error("Error updating admin:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Server xatosi: Admin ma'lumotlarini yangilashda xato yuz berdi.",
+            error: error.message,
+        });
     }
 };
 
-// Adminni o'chirish
+// ----------------- Search Admin ---------------- //
+const searchAdmin = async (req, res) => {
+    try {
+        const { query } = req.query;
+
+        if (!query || typeof query !== "string") {
+            return res.status(400).json({
+                success: false,
+                message: "Qidiruv so'rovi noto'g'ri berildi.",
+            });
+        }
+
+        const result = await Admin.find({
+            $or: [
+                { name: { $regex: query, $options: "i" } },
+                { login: { $regex: query, $options: "i" } },
+            ],
+        }).select("-hashed_password -hashed_refresh_token");
+
+        if (result.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Bunday admin topilmadi.",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Qidiruv natijalari.",
+            innerData: result,
+        });
+    } catch (error) {
+        console.error("Error searching admin:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error: Failed to fetch admins",
+            error: error.message,
+        });
+    }
+};
+
+// ----------------- Delete Admin ---------------- //
 const deleteAdmin = async (req, res) => {
     try {
         const { id } = req.params;
-        const deleted = await Admin.findByIdAndDelete(id);
 
-        if (!deleted) {
-            return res.status(404).json({ message: "Admin topilmadi" });
+        const deletedAdmin = await Admin.findByIdAndDelete(id);
+
+        if (!deletedAdmin) {
+            return res.status(404).json({
+                success: false,
+                message: "Admin topilmadi.",
+            });
         }
 
-        res.status(200).json({ message: "Admin tizimdan o'chirildi" });
+        return res.status(200).json({
+            success: true,
+            message: "Admin muvaffaqiyatli o'chirildi.",
+            innerData: deletedAdmin,
+        });
     } catch (error) {
-        res.status(500).json({ message: "Serverda xatolik yuz berdi", details: error.message });
+        console.error("Error deleting admin:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server xatosi: Adminni o'chirishda xatolik yuz berdi.",
+            error: error.message,
+        });
     }
 };
 
 module.exports = {
-    createAdmin,
+    postRegisterAdmin,
     loginAdmin,
-    getAllAdmins,
+    getAdmins,
     getAdminById,
     updateAdmin,
+    searchAdmin,
     deleteAdmin,
 };

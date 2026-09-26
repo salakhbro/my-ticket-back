@@ -55,10 +55,6 @@ const validateSchema = (schema) => (req, res, next) => {
  *               cart_id:
  *                 type: string
  *                 example: "67c123456789012345678901"
- *               createdAt:
- *                 type: string
- *                 format: date-time
- *                 example: "2026-07-16T10:00:00.000Z"
  *               finished:
  *                 type: string
  *                 format: date-time

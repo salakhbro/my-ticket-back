@@ -1,5 +1,4 @@
 const { Router } = require("express");
-
 const router = Router();
 
 const {
@@ -19,7 +18,7 @@ const {
 
 /**
  * @swagger
- * /api/delivery-method:
+ * /delivery-method:
  *   post:
  *     summary: Yangi delivery method yaratish
  *     tags: [Delivery Method]
@@ -43,7 +42,7 @@ router.post("/", createDeliveryMethod);
 
 /**
  * @swagger
- * /api/delivery-method:
+ * /delivery-method:
  *   get:
  *     summary: Barcha delivery methodlarni olish
  *     tags: [Delivery Method]
@@ -55,7 +54,7 @@ router.get("/", getDeliveryMethods);
 
 /**
  * @swagger
- * /api/delivery-method/{id}:
+ * /delivery-method/{id}:
  *   get:
  *     summary: ID orqali delivery methodni olish
  *     tags: [Delivery Method]
@@ -75,7 +74,7 @@ router.get("/:id", getDeliveryMethodById);
 
 /**
  * @swagger
- * /api/delivery-method/{id}:
+ * /delivery-method/{id}:
  *   put:
  *     summary: Delivery methodni yangilash
  *     tags: [Delivery Method]
@@ -107,7 +106,7 @@ router.put("/:id", updateDeliveryMethod);
 
 /**
  * @swagger
- * /api/delivery-method/{id}:
+ * /delivery-method/{id}:
  *   delete:
  *     summary: Delivery methodni o'chirish
  *     tags: [Delivery Method]

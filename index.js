@@ -27,7 +27,7 @@ const seatRouter = require("./routes/seatRoute.js");
 const ticketRouter = require("./routes/ticketRoute.js");
 const cartRouter = require("./routes/cartRoute.js");
 const cartItemRouter = require("./routes/cart_itemRoute.js");
-const bookingRouter = require("./routes/bookingRoute.js")
+const bookingRouter = require("./routes/bookingRoute.js");
 
 const app = express();
 

@@ -1,13 +1,14 @@
 const { Router } = require("express");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const { Admin } = require("../model/adminSchema"); 
-
 const router = Router();
 
-// Maxfiy kalitlar (amaliyotda .env faylida saqlanadi)
-const JWT_SECRET = process.env.JWT_SECRET || "super_secret_key";
-const REFRESH_SECRET = process.env.REFRESH_SECRET || "super_refresh_secret";
+const {
+    postRegisterAdmin, 
+    loginAdmin,
+    getAdmins,
+    getAdminById,
+    updateAdmin,
+    deleteAdmin
+} = require("../controllers/admin.controller");
 
 /**
  * @swagger
@@ -18,7 +19,7 @@ const REFRESH_SECRET = process.env.REFRESH_SECRET || "super_refresh_secret";
 
 /**
  * @swagger
- * /api/admin/register:
+ * /admin/register:
  *   post:
  *     summary: Yangi admin ro'yxatdan o'tkazish
  *     tags: [Admin]
@@ -47,56 +48,19 @@ const REFRESH_SECRET = process.env.REFRESH_SECRET || "super_refresh_secret";
  *                 default: false
  *     responses:
  *       201:
- *         description: Admin muvaffaqiyatli yaratildi
+ *         description: Admin ro'yxatga olindi
  *       400:
- *         description: Login band yoki ma'lumotlar yetarli emas
+ *         description: Barcha majburiy maydonlarni kiriting yoki login band
  *       500:
- *         description: Server xatosi
+ *         description: Ichki server xatoligi
  */
-router.post("/register", async (req, res) => {
-    try {
-        const { name, login, password, is_creator } = req.body;
-
-        if (!name || !login || !password) {
-            return res.status(400).json({ message: "Barcha maydonlarni toldiring" });
-        }
-
-        const existingAdmin = await Admin.findOne({ login });
-        if (existingAdmin) {
-            return res.status(400).json({ message: "Ushbu login band" });
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        const newAdmin = new Admin({
-            name,
-            login,
-            hashed_password: hashedPassword,
-            is_creator: is_creator || false,
-        });
-
-        await newAdmin.save();
-
-        res.status(201).json({
-            message: "Admin muvaffaqiyatli yaratildi",
-            admin: {
-                id: newAdmin._id,
-                name: newAdmin.name,
-                login: newAdmin.login,
-                is_active: newAdmin.is_active,
-                is_creator: newAdmin.is_creator,
-            },
-        });
-    } catch (error) {
-        res.status(500).json({ message: "Serverda xatolik yuz berdi", error: error.message });
-    }
-});
+router.post("/register", postRegisterAdmin);
 
 /**
  * @swagger
- * /api/admin/login:
+ * /admin/login:
  *   post:
- *     summary: Tizimga kirish
+ *     summary: Tizimga kirish (Login)
  *     tags: [Admin]
  *     requestBody:
  *       required: true
@@ -116,68 +80,33 @@ router.post("/register", async (req, res) => {
  *                 example: "Pass1234!"
  *     responses:
  *       200:
- *         description: Muvaffaqiyatli kirildi
+ *         description: Muvaffaqiyatli avtorizatsiya
  *       401:
- *         description: Login yoki parol noto'g'ri
+ *         description: Login yoki parol xato (yoki akkount faol emas)
  *       500:
- *         description: Server xatosi
+ *         description: Ichki server xatoligi
  */
-router.post("/login", async (req, res) => {
-    try {
-        const { login, password } = req.body;
-
-        const admin = await Admin.findOne({ login });
-        if (!admin || !admin.is_active) {
-            return res.status(401).json({ message: "Login yoki parol noto'g'ri (yoki admin faol emas)" });
-        }
-
-        const isPasswordValid = await bcrypt.compare(password, admin.hashed_password);
-        if (!isPasswordValid) {
-            return res.status(401).json({ message: "Login yoki parol noto'g'ri" });
-        }
-
-        const accessToken = jwt.sign({ id: admin._id, login: admin.login }, JWT_SECRET, { expiresIn: "1h" });
-        const refreshToken = jwt.sign({ id: admin._id }, REFRESH_SECRET, { expiresIn: "7d" });
-
-        admin.hashed_refresh_token = await bcrypt.hash(refreshToken, 10);
-        await admin.save();
-
-        res.status(200).json({
-            message: "Tizimga kirildi",
-            accessToken,
-            refreshToken,
-        });
-    } catch (error) {
-        res.status(500).json({ message: "Serverda xatolik yuz berdi", error: error.message });
-    }
-});
+router.post("/login", loginAdmin);
 
 /**
  * @swagger
- * /api/admin:
+ * /admin:
  *   get:
- *     summary: Barcha adminlar ro'yxatini olish
+ *     summary: Barcha adminlarni olish
  *     tags: [Admin]
  *     responses:
  *       200:
- *         description: Adminlar ro'yxati
+ *         description: Adminlar ro'yxati muvaffaqiyatli olindi
  *       500:
- *         description: Server xatosi
+ *         description: Serverda xatolik yuz berdi
  */
-router.get("/", async (req, res) => {
-    try {
-        const admins = await Admin.find({}, "-hashed_password -hashed_refresh_token");
-        res.status(200).json(admins);
-    } catch (error) {
-        res.status(500).json({ message: "Serverda xatolik", error: error.message });
-    }
-});
+router.get("/", getAdmins);
 
 /**
  * @swagger
- * /api/admin/{id}:
+ * /admin/{id}:
  *   get:
- *     summary: ID bo'yicha admin ma'lumotini olish
+ *     summary: ID bo'yicha bitta adminni olish
  *     tags: [Admin]
  *     parameters:
  *       - in: path
@@ -188,29 +117,19 @@ router.get("/", async (req, res) => {
  *         description: Admin ID si
  *     responses:
  *       200:
- *         description: Admin ma'lumoti
+ *         description: Admin ma'lumotlari topildi
  *       404:
  *         description: Admin topilmadi
  *       500:
- *         description: Server xatosi
+ *         description: Serverda xatolik yuz berdi
  */
-router.get("/:id", async (req, res) => {
-    try {
-        const admin = await Admin.findById(req.params.id, "-hashed_password -hashed_refresh_token");
-        if (!admin) {
-            return res.status(404).json({ message: "Admin topilmadi" });
-        }
-        res.status(200).json(admin);
-    } catch (error) {
-        res.status(500).json({ message: "Serverda xatolik", error: error.message });
-    }
-});
+router.get("/:id", getAdminById);
 
 /**
  * @swagger
- * /api/admin/{id}:
+ * /admin/{id}:
  *   put:
- *     summary: Admin ma'lumotlarini yangilash
+ *     summary: Admin ma'lumotlarini tahrirlash
  *     tags: [Admin]
  *     parameters:
  *       - in: path
@@ -218,6 +137,7 @@ router.get("/:id", async (req, res) => {
  *         required: true
  *         schema:
  *           type: string
+ *         description: Admin ID si
  *     requestBody:
  *       required: true
  *       content:
@@ -227,41 +147,26 @@ router.get("/:id", async (req, res) => {
  *             properties:
  *               name:
  *                 type: string
+ *                 example: "Ali Valiyev"
  *               is_active:
  *                 type: boolean
+ *                 example: true
  *               is_creator:
  *                 type: boolean
+ *                 example: false
  *     responses:
  *       200:
- *         description: Muvaffaqiyatli yangilandi
+ *         description: Ma'lumotlar yangilandi
  *       404:
  *         description: Admin topilmadi
  *       500:
- *         description: Server xatosi
+ *         description: Serverda xatolik yuz berdi
  */
-router.put("/:id", async (req, res) => {
-    try {
-        const { name, is_active, is_creator } = req.body;
-
-        const updatedAdmin = await Admin.findByIdAndUpdate(
-            req.params.id,
-            { name, is_active, is_creator },
-            { new: true, runValidators: true }
-        ).select("-hashed_password -hashed_refresh_token");
-
-        if (!updatedAdmin) {
-            return res.status(404).json({ message: "Admin topilmadi" });
-        }
-
-        res.status(200).json(updatedAdmin);
-    } catch (error) {
-        res.status(500).json({ message: "Serverda xatolik", error: error.message });
-    }
-});
+router.put("/:id", updateAdmin);
 
 /**
  * @swagger
- * /api/admin/{id}:
+ * /admin/{id}:
  *   delete:
  *     summary: Adminni o'chirish
  *     tags: [Admin]
@@ -271,24 +176,15 @@ router.put("/:id", async (req, res) => {
  *         required: true
  *         schema:
  *           type: string
+ *         description: Admin ID si
  *     responses:
  *       200:
- *         description: Admin o'chirildi
+ *         description: Admin tizimdan o'chirildi
  *       404:
  *         description: Admin topilmadi
  *       500:
- *         description: Server xatosi
+ *         description: Serverda xatolik yuz berdi
  */
-router.delete("/:id", async (req, res) => {
-    try {
-        const deletedAdmin = await Admin.findByIdAndDelete(req.params.id);
-        if (!deletedAdmin) {
-            return res.status(404).json({ message: "Admin topilmadi" });
-        }
-        res.status(200).json({ message: "Admin o'chirildi" });
-    } catch (error) {
-        res.status(500).json({ message: "Serverda xatolik", error: error.message });
-    }
-});
+router.delete("/:id", deleteAdmin);
 
 module.exports = router;
